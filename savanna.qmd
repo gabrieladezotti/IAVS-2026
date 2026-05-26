@@ -1,0 +1,314 @@
+---
+title: 'IAVS-2026: "The Burning Question"'
+author: "Gabriela Dezotti"
+date: "2024-05"
+lang: "en"
+format: html
+  theme: cosmo
+  number-sections: true
+  toc: true
+  code-fold: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  freeze: auto
+  cache: true
+editor: visual
+
+---
+# Objective
+This document presents the analyses developed for my poster at the 68th IAVS Symposium. Using data from a long-term experiment in a Cerrado area, I quantify how the forb community structure changes over time in response to fire suppression. The workflow includes data organization, exploratory analyses, and figure generation for inclusion in the poster.
+
+For defining forbs I've followed the document [20260420_GrowthFormsTombador_AFidelis](https://docs.google.com/spreadsheets/d/1QtTrJXviJqreZNYnwPIZKfGR0B7WD2L9/edit?usp=sharing&ouid=105834115709745946255&rtpof=true&sd=true), which is a list of species and their growth forms for the RNST Area. 
+
+I will be comparing fire excluded and mid-dry treatment and will be only using surveys carried out in the rainy season to avoid the confounding effect of seasonality on the community structure. The rainy season is also the period of higher productivity in the Cerrado, which is when we expect to see some species that only appear in tis period (Dezotti et al., in prep).
+
+# Data Preparation
+
+First, I load the necessary packages (tidyverse, vegan, glmmTMB) and read the data from a text file. 
+The dataset contains information on plant cover and species richness.
+
+```{r}
+#| label: setup
+#| include: false
+
+library(here)
+library(tidyverse)
+library(glmmTMB)
+library(DHARMa)
+library(ggeffects)
+library(extrafont)
+library(emmeans)
+
+  recode_treatment = function(x) {
+  recode(x,
+    "BF" = "Frequent fire",
+    "FE" = "Fire suppression"
+  )
+}
+
+cols = c(
+  "Frequent fire" = "#a6531b",
+  "Fire suppression" = "#0e0d0d" 
+)
+
+fills = c(
+  "Frequent fire" = "#e65c00",
+  "Fire suppression" = "#555555"
+)
+
+loadfonts()
+
+poster = function(show_legend = FALSE, legend_pos = c(0.48, 0.93)) {
+  theme_bw(base_family = "Aptos") +
+    theme(
+      axis.title = element_text(face = "bold", size = 20),
+      axis.text.x = element_text(size = 16, color = "black"),
+      axis.text.y = element_text(size = 16, color = "black"),
+      legend.text = element_text(size = 16),
+      legend.position = if (show_legend) legend_pos else "none",
+      legend.justification = c(0.5, 1),
+      legend.direction = "horizontal",
+      plot.margin = margin(t = 15, r = 15, b = 15, l = 15),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_rect(color = "#4a3b32", fill = NA, linewidth = 1.3),
+      plot.background = element_rect(fill = "transparent", color = NA),
+      panel.background = element_rect(fill = "transparent", color = NA),
+      legend.background = element_rect(fill = "transparent", color = NA)
+    )
+}
+
+year_levels = c("2016", "2017", "2018", "2019", "2020", "2022", "2023", "2024", "2025")
+
+```
+
+```{r}
+#| label: load-data
+#| include: true
+
+data = read.table(here("Savanna.txt"), 
+                   header = T, 
+                   stringsAsFactors = , 
+                   sep="\t") 
+
+glimpse(data)    
+```
+
+# Data Wrangling
+```{r}
+#| label: data-prep
+#| include: true
+
+  cover = data |>
+
+  group_by(date, treatment, plots, observer) |>
+  summarise(
+    totalCover = sum(cover, na.rm = TRUE),
+    richness = n_distinct(species),
+    .groups = "drop"
+  ) |>
+
+  mutate(
+    year = as.numeric(substr(as.character(date), 1, 4))
+  ) |>
+  
+  select(-date) |>
+  mutate(
+    year = factor(year)
+  )
+
+glimpse(cover)
+```
+
+## Cover
+ ```{r}
+#| label: fit-cover-model
+
+glmm_cover <-  glmmTMB(
+  totalCover ~ treatment * year + (1 | observer) + (1 | plots),
+  family = tweedie(link = "log"),
+  data = cover
+)
+
+summary(glmm_cover)
+```
+
+```{r}
+#| label: diag-cover-model
+
+res_cover <- simulateResiduals(glmm_cover)
+plot(res_cover)
+testDispersion(res_cover)
+testUniformity(res_cover) 
+```
+
+```{r}
+#| label: trends-cover-model
+
+emm_cover =
+ emmeans(glmm_cover, ~ treatment | year,
+ type = "response")
+
+contrast_cover <- pairs(emm_cover, adjust = "holm")
+
+summary(contrast_cover, infer = TRUE)
+```
+
+## Richness
+```{r}
+#| label: fit-richness-model
+#| include: true
+  glmm_rich = glmmTMB(
+    richness ~ treatment * year + (1 | plots),
+    family = compois(link = "log"),
+    data = cover
+  )
+
+  summary(glmm_rich)
+ ```
+
+```{r}
+#| label: diag-richness-model
+#| include: true
+
+ res_rich <- simulateResiduals(glmm_rich)
+ plot(res_rich)
+ testDispersion(res_rich)
+ testUniformity(res_rich) 
+
+```
+
+```{r}
+#| label: pairs-richness-model
+
+emm_rich = 
+emmeans(glmm_rich, ~ treatment | year, type = "response")
+
+rich_tbl =
+ pairs(emm_rich, adjust = "holm") |>
+  summary(infer = TRUE)
+
+```
+
+# Figures
+```{r}
+#| label: build-plot-data
+
+rich_sum =
+ cover |>
+  group_by(treatment, year) |>
+  summarise(mean_rich = mean(richness, na.rm = TRUE), .groups = "drop") |>
+  mutate(
+    treatment = recode_treatment(treatment))
+
+cover_sum =
+ cover |>
+  group_by(treatment, year) |>
+  summarise(mean_cover = mean(totalCover, na.rm = TRUE), .groups = "drop") |>
+  mutate(
+    treatment = recode_treatment(treatment),
+    year_plot = factor(as.character(year), levels = year_levels)
+  )
+
+pred_rich = ggpredict(
+  glmm_rich,
+  terms = c("year", "treatment"),
+  bias_correction = TRUE
+) |>
+  as.data.frame() |>
+  mutate(
+    group = recode_treatment(group)
+  )
+
+pred_cover <- ggpredict(
+  glmm_cover,
+  terms = c("year", "treatment"),
+  bias_correction = TRUE
+) |>
+  as.data.frame() |>
+  mutate(
+    group = recode_treatment(group)
+  )
+
+```
+
+```{r}
+#| label: plot-richness
+#| fig-width: 9
+#| fig-height: 4.5
+
+p_rich =
+ ggplot() +
+  geom_ribbon(
+    data = pred_rich,
+    aes(x = x, ymin = conf.low, ymax = conf.high, fill = group, group = group),
+    alpha = 0.18,
+    color = NA
+  ) +
+
+  geom_line(
+    data = pred_rich,
+    aes(x = x, y = predicted, color = group, group = group),
+    linewidth = 1.8
+  ) +
+
+   scale_x_discrete(drop = FALSE, expand = expansion(mult = c(0, 0.02))) + 
+  scale_y_continuous(expand = expansion(mult = c(0.02, 0.15)),
+  limits = c(0, NA)) +
+
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = fills) +
+  labs(x = "Year", y = "Richness (spp/m²)", color = NULL) +
+  poster(show_legend = FALSE) + 
+  theme(axis.text.x = element_text(margin = margin(t = 5), size = 18))
+
+  ggsave("richness.png", p_rich,
+   width = 9, height = 4.5,
+   dpi = 300, bg = "transparent")
+ ```
+
+
+```{r}
+#| label: plot-cover
+#| fig-width: 9
+#| fig-height: 4.5
+
+p_cover <- ggplot() +
+  geom_ribbon(
+    data = pred_cover,
+    aes(x = x, ymin = conf.low, ymax = conf.high, fill = group, group = group),
+    alpha = 0.18,
+    color = NA
+  ) +
+  geom_line(
+    data = pred_cover,
+    aes(x = x, y = predicted, color = group, group = group),
+    linewidth = 1.8
+  ) +
+  scale_x_discrete(drop = FALSE, expand = expansion(mult = c(0, 0.02))) + 
+  scale_y_continuous(expand = expansion(mult = c(0.02, 0.15))) +
+  
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = fills) +
+
+  labs(x = "Year", y = "Cover (%)", color = NULL) +
+  guides(
+    fill = "none",
+    color = guide_legend(
+      override.aes = list(size = 4)
+    )) +
+  poster(show_legend = FALSE) +
+  theme(axis.text.x = element_text(margin = margin(t = 12), size = 18))
+
+  ggsave(
+  filename = "cover.png", 
+  plot = p_cover, 
+  width = 9,      
+  height = 4.5, 
+  dpi = 300, 
+  bg = "transparent" 
+)
+
+```
