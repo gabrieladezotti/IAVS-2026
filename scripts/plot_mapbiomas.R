@@ -1,13 +1,19 @@
+# Packages
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(readr)
 library(extrafont)
 
+# Load system fonts
 loadfonts()
+
+# Read the input data
 data <- read_csv("CoverSavanna.csv")
 class_int <- ("Formação Savânica")
 
+
+# Filter the selected class and reshape the data to long format
 long_data =
  data |>
   filter(`Nível 2` %in% class_int) |>
@@ -22,6 +28,7 @@ long_data =
     Area_Mha = Area_Ha / 1000000 
   )
 
+# Build the time-series plot
 p <- ggplot(long_data, 
             aes(x = Ano,
                 y = Area_Mha,
@@ -54,6 +61,7 @@ p <- ggplot(long_data,
     panel.border = element_rect(color = "black", size = 0.8)
   )
 
+# Display the plot
 print(p)
 
 

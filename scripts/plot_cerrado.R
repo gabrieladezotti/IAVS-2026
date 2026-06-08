@@ -1,14 +1,17 @@
+# Location of the Cerrado biome within Brazil
+
+# Packages
 library(ggplot2)
 library(sf)
 library(geobr)
 
 
-# Dados oficiais IBGE via geobr
+# Data
 brazil   <- read_country(year = 2020)
 biomes   <- read_biomes(year = 2019)
 cerrado  <- biomes[biomes$name_biome == "Cerrado", ]
 
-# Mapa
+# Plotting map
 ggplot() +
   geom_sf(data = brazil,  fill = "#DDD0C0", color = "#5A4A3A", linewidth = 0.8) +
   geom_sf(data = cerrado, fill = "#C17F3A", color = "#8B5E14", alpha = 0.88, linewidth = 0.6) +
