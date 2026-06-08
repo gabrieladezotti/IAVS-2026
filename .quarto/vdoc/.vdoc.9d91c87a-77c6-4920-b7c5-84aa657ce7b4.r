@@ -1,35 +1,35 @@
----
-title: 'IAVS-2026: "The Burning Question"'
-author: "Gabriela Dezotti"
-date: "2024-05"
-lang: "en"
-format: html
-  theme: cosmo
-  number-sections: true
-  toc: true
-  code-fold: true
-execute:
-  echo: true
-  warning: false
-  message: false
-  freeze: auto
-  cache: true
-editor: visual
-
----
-# Objective
-This document presents the analyses developed for my poster at the 68th IAVS Symposium. Using data from a long-term experiment in a Cerrado area, I quantify how the forb community structure changes over time in response to fire suppression. The workflow includes data organization, exploratory analyses, and figure generation for inclusion in the poster.
-
-For defining forbs I've followed the document [20260420_GrowthFormsTombador_AFidelis](https://docs.google.com/spreadsheets/d/1QtTrJXviJqreZNYnwPIZKfGR0B7WD2L9/edit?usp=sharing&ouid=105834115709745946255&rtpof=true&sd=true), which is a list of species and their growth forms for the RNST Area. 
-
-I will be comparing fire excluded and mid-dry treatment and will be only using surveys carried out in the rainy season to avoid the confounding effect of seasonality on the community structure. The rainy season is also the period of higher productivity in the Cerrado, which is when we expect to see some species that only appear in tis period (Dezotti et al., in prep).
-
-# Data Preparation
-
-First, I load the necessary packages (tidyverse, vegan, glmmTMB) and read the data from a text file. 
-The dataset contains information on plant cover and species richness.
-
-```{r}
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
 #| label: setup
 #| include: false
 
@@ -82,9 +82,9 @@ poster = function(show_legend = FALSE, legend_pos = c(0.48, 0.93)) {
 
 year_levels = c("2016", "2017", "2018", "2019", "2020", "2022", "2023", "2024", "2025")
 
-```
-
-```{r}
+#
+#
+#
 #| label: load-data
 #| include: true
 
@@ -94,10 +94,11 @@ data = read.table(here("Savanna.txt"),
                    sep="\t") 
 
 glimpse(data)    
-```
-
-# Data Wrangling
-```{r}
+#
+#
+#
+#
+#
 #| label: data-prep
 #| include: true
 
@@ -120,31 +121,32 @@ glimpse(data)
   )
 
 glimpse(cover)
-```
-
-## Cover
- ```{r}
+#
+#
+#
+#
+#
 #| label: fit-cover-model
 
 glmm_cover <-  glmmTMB(
-  totalCover ~ treatment * year + (1 | observer) + (1 | plots),
-  family = tweedie(link = "log"),
-  data = cover
+ totalCover ~ treatment * year + (1 | observer) + (1 | plots),
+ family = tweedie(link = "log"),
+ data = cover
 )
 
 summary(glmm_cover)
-```
-
-```{r}
+#
+#
+#
 #| label: diag-cover-model
 
 res_cover <- simulateResiduals(glmm_cover)
 plot(res_cover)
 testDispersion(res_cover)
 testUniformity(res_cover) 
-```
-
-```{r}
+#
+#
+#
 #| label: trends-cover-model
 
 emm_cover =
@@ -154,10 +156,11 @@ emm_cover =
 contrast_cover <- pairs(emm_cover, adjust = "holm")
 
 summary(contrast_cover, infer = TRUE)
-```
-
-## Richness
-```{r}
+#
+#
+#
+#
+#
 #| label: fit-richness-model
 #| include: true
   glmm_rich = glmmTMB(
@@ -167,9 +170,9 @@ summary(contrast_cover, infer = TRUE)
   )
 
   summary(glmm_rich)
- ```
-
-```{r}
+#
+#
+#
 #| label: diag-richness-model
 #| include: true
 
@@ -178,9 +181,9 @@ summary(contrast_cover, infer = TRUE)
  testDispersion(res_rich)
  testUniformity(res_rich) 
 
-```
-
-```{r}
+#
+#
+#
 #| label: pairs-richness-model
 
 emm_rich = 
@@ -190,10 +193,11 @@ rich_tbl =
  pairs(emm_rich, adjust = "holm") |>
   summary(infer = TRUE)
 
-```
-
-# Figures
-```{r}
+#
+#
+#
+#
+#
 #| label: build-plot-data
 
 rich_sum =
@@ -232,9 +236,9 @@ pred_cover <- ggpredict(
     group = recode_treatment(group)
   )
 
-```
-
-```{r}
+#
+#
+#
 #| label: plot-richness
 #| fig-width: 9
 #| fig-height: 4.5
@@ -267,10 +271,9 @@ p_rich =
   ggsave("richness.png", p_rich,
    width = 9, height = 4.5,
    dpi = 300, bg = "transparent")
- ```
-
-
-```{r}
+#
+#
+#
 #| label: plot-cover
 #| fig-width: 9
 #| fig-height: 4.5
@@ -311,4 +314,6 @@ p_cover <- ggplot() +
   bg = "transparent" 
 )
 
-```
+#
+#
+#
